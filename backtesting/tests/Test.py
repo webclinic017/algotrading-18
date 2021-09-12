@@ -29,6 +29,7 @@ class Test(ABC):
         self.symbols = symbols_data_fetcher.get_n_symbols_with_listing_newer_than_date(
             self.get_total_symbols_to_test(), self.from_date)
         self.historical_data_fetcher = DataFetcherFactory(self.store_helper).get_object(self.get_exchange())
+        # self.symbols = ["ARIES"]
 
     def get_start_cash(self):
         return self.config['cash']
@@ -38,6 +39,9 @@ class Test(ABC):
 
     def get_exchange(self):
         return self.config['exchange']
+
+    def get_order_percent(self):
+        return self.config['order_pct']
 
     def get_name(self):
         return self.name
@@ -101,7 +105,8 @@ class Test(ABC):
 
         df = pd.DataFrame(results)
         df.set_index('Strategy', inplace=True)
-        print(df.tail())
+
+        self.store_helper.write_results_to_store(df, self.__class__.__name__ + '.csv')
         self.store_helper.remove_temp_files()
 
     def do_run(self, data, cash, strategy, symbol):

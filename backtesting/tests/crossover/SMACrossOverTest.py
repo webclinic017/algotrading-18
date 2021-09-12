@@ -33,7 +33,8 @@ class SMACrossOverTest(Test):
 
     def add_strategy(self, cerebro, strategy, symbol):
         cerebro.addstrategy(strategy, ticker=symbol,
-                            fast_period=self.get_fast_period(), slow_period=self.get_slow_period())
+                            fast_period=self.get_fast_period(), slow_period=self.get_slow_period(),
+                            order_pct=self.get_order_percent())
 
 
 

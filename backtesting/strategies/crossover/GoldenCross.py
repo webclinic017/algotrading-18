@@ -8,7 +8,7 @@ class GoldenCross(bt.Strategy):
         self.ticker = kwargs['ticker']
         self.fast_period = kwargs['fast_period']
         self.slow_period = kwargs['slow_period']
-        self.order_pct = 1.0
+        self.order_pct = kwargs['order_pct']
 
         self.fast_ma = bt.indicators.SimpleMovingAverage(
             self.data.close,

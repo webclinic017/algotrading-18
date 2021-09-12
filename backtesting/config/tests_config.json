@@ -1,6 +1,7 @@
 {
   "cash" : 100000,
-  "total_symbols" : 1,
+  "total_symbols" : 1000,
+  "order_pct" : 0.95,
   "exchange" : "NSE",
   "GoldenCross" : {
     "max_candles" : 800,
@@ -8,10 +9,10 @@
     "fast_period" : 50,
     "slow_period" : 200
   },
-  "SuperTrendTest" : {
+  "SuperTrend" : {
     "max_candles" : 300,
     "to_date" : "Jun-1-2021",
-    "period" : 7,
-    "multiplier" : 3
+    "atr_period" : 7,
+    "atr_multiplier" : 3
   }
 }
