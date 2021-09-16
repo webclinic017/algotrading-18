@@ -1,6 +1,6 @@
 {
   "cash" : 100000,
-  "total_symbols" : 1000,
+  "total_symbols" : 10,
   "order_pct" : 0.95,
   "exchange" : "NSE",
   "GoldenCross" : {

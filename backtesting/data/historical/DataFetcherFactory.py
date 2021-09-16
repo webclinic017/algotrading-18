@@ -1,4 +1,4 @@
-from data.historical.NSEDataFetcher import NSEDataFetcher
+from backtesting.data.historical.NSEDataFetcher import NSEDataFetcher
 
 
 class DataFetcherFactory:

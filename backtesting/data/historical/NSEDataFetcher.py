@@ -1,6 +1,6 @@
 from backtrader.feeds import GenericCSVData
 from nsepy import get_history
-from data.historical.DataFetcher import DataFetcher
+from backtesting.data.historical.DataFetcher import DataFetcher
 
 
 class NSEDataFetcher(DataFetcher):

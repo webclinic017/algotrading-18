@@ -1,4 +1,4 @@
-from data.symbols.NSESymbolsDataFetcher import NSESymbolsDataFetcher
+from backtesting.data.symbols.NSESymbolsDataFetcher import NSESymbolsDataFetcher
 
 
 class SymbolsDataFetcherFactory:

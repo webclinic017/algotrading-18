@@ -1,13 +1,13 @@
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import backtrader as bt
 import pandas as pd
 
-from data.historical.DataFetcherFactory import DataFetcherFactory
-from data.symbols.SymbolsDataFetcherFactory import SymbolsDataFetcherFactory
-from helpers.StoreHelper import StoreHelper
+from backtesting.data.historical.DataFetcherFactory import DataFetcherFactory
+from backtesting.data.symbols.SymbolsDataFetcherFactory import SymbolsDataFetcherFactory
+from backtesting.helpers.StoreHelper import StoreHelper
 
 
 class Test(ABC):
@@ -19,7 +19,7 @@ class Test(ABC):
         self.config = json.load(f)
         f.close()
 
-        self.store_helper = StoreHelper('store/')
+        self.store_helper = StoreHelper('backtesting/store/')
 
         self.to_date = self.get_to_date()
         self.from_date = (self.to_date - timedelta(days=self.get_max_candles()))
