@@ -1,4 +1,5 @@
 import datetime
+import logging
 import sqlite3
 import sys
 import traceback
@@ -8,6 +9,7 @@ import pandas as pd
 
 class AccessTokenDB:
     def __init__(self, db_path):
+        logging.basicConfig(format='%(asctime)s :: %(levelname)s :: %(message)s', level=logging.INFO)
         self.db = sqlite3.connect(db_path)
         self.table_name = "AccessToken"
 
@@ -32,6 +34,7 @@ class AccessTokenDB:
 
         try:
             self.db.commit()
+            logging.info("Access token written to database")
         except:
             print("Exception while committing token: " + traceback.format_exc())
             self.db.rollback()

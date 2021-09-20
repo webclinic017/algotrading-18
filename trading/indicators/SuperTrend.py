@@ -30,46 +30,58 @@ class SuperTrend(Indicator):
 
         # Iterate the dataframe
         ind = df.index
-        for i in range(self.candle_length, len(df)):
-            if df['close'][i - 1] > df['U-B'][i - 1]:
+        for i in range(self.candle_length + 1, len(df)):
+            if df['close'][i - 1] > df['U-B'][i - 1] or df['B-U'][i] < df['U-B'][i - 1]:
                 df.loc[ind[i], 'U-B'] = df['B-U'][i]
             else:
                 df.loc[ind[i], 'U-B'] = min(df['B-U'][i], df['U-B'][i - 1])
 
-        for i in range(self.candle_length, len(df)):
-            if df['close'][i - 1] < df['L-B'][i - 1]:
+        for i in range(self.candle_length + 1, len(df)):
+            if df['close'][i - 1] < df['L-B'][i - 1] or df['B-L'][i] > df['L-B'][i - 1]:
                 df.loc[ind[i], 'L-B'] = df['B-L'][i]
             else:
                 df.loc[ind[i], 'L-B'] = max(df['B-L'][i], df['L-B'][i - 1])
 
         df[st_name] = np.NaN
         df['crossover'] = 0
+        df['color'] = "na"
 
         # We have to iterate and find the first super trend
         # We cannot simply assume the first super trend to be upper or lower band value. This will give wrong signals
         # Once we find the first super trend, which is the correct one, then we can extend it easily
-        for s in range(self.candle_length, len(df)):
+        for s in range(self.candle_length + 1, len(df)):
             if (df['close'][s - 1] <= df['U-B'][s - 1]) and (df['close'][s] > df['U-B'][s]):
                 df.loc[ind[s], st_name] = df['L-B'][s]
-                df['crossover'] = 1
+                df.loc[ind[s], 'crossover'] = 1
+                df.loc[ind[s], 'color'] = "green"
                 break
             if (df['close'][s - 1] >= df['L-B'][s - 1]) and (df['close'][s] < df['L-B'][s]):
                 df.loc[ind[s], st_name] = df['U-B'][s]
-                df['crossover'] = -1
+                df.loc[ind[s], 'crossover'] = -1
+                df.loc[ind[s], 'color'] = "red"
                 break
 
-        for i in range(s, len(df)):
+        for i in range(s + 1, len(df)):
             if (df[st_name][i - 1] == df['U-B'][i - 1]) and (df['close'][i] > df['U-B'][i]):
                 df.loc[ind[i], st_name] = df['L-B'][i]
-                df['crossover'] = 1
+                df.loc[ind[i], 'crossover'] = 1
+                df.loc[ind[i], 'color'] = "green"
             elif (df[st_name][i - 1] == df['U-B'][i - 1]) and (df['close'][i] <= df['U-B'][i]):
                 df.loc[ind[i], st_name] = df['U-B'][i]
-                df['crossover'] = 0
+                df.loc[ind[i], 'crossover'] = 0
+                df.loc[ind[i], 'color'] = df['color'][i - 1]
             elif (df[st_name][i - 1] == df['L-B'][i - 1]) and (df['close'][i] < df['L-B'][i]):
                 df.loc[ind[i], st_name] = df['U-B'][i]
-                df['crossover'] = -1
+                df.loc[ind[i], 'crossover'] = -1
+                df.loc[ind[i], 'color'] = "red"
             elif (df[st_name][i - 1] == df['L-B'][i - 1]) and (df['close'][i] >= df['L-B'][i]):
                 df.loc[ind[i], st_name] = df['L-B'][i]
-                df['crossover'] = 0
+                df.loc[ind[i], 'crossover'] = 0
+                df.loc[ind[i], 'color'] = df['color'][i - 1]
+            else:
+                df.loc[ind[i], st_name] = df[st_name][i - 1]
+                df.loc[ind[i], 'color'] = df['color'][i - 1]
 
-        return [Line(st_name, df[st_name]), Line('crossover', df['crossover'])]
+        return [Line(st_name, df[st_name]),
+                Line('crossover', df['crossover']),
+                Line('color', df['color'])]

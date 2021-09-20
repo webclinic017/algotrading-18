@@ -1,4 +1,5 @@
 import time
+import logging
 
 from kiteconnect import KiteConnect
 from selenium import webdriver
@@ -6,6 +7,7 @@ from selenium import webdriver
 
 class Authorizer:
     def __init__(self, token_db):
+        logging.basicConfig(format='%(asctime)s :: %(levelname)s :: %(message)s', level=logging.INFO)
         self.api_secret = "***"
         self.api_key = "***"
         self.kite_login_id = "***"
@@ -54,12 +56,14 @@ class Authorizer:
         for token in tokens:
             if "request_token" in token:
                 r = token.split('=')
+                logging.info("Got request token {}".format(r))
                 # print(r[1])
                 return r[1]
 
     def authorize_and_get_access_token(self):
         request_token = self.get_request_token()
         data = self.kite.generate_session(request_token, api_secret=self.api_secret)
+        logging.info("Access token obtained from zerodha")
 
         return data["access_token"]
 
@@ -67,17 +71,20 @@ class Authorizer:
         at = self.token_db.get_access_token()
 
         if at.empty:
+            logging.info("Access token not present in db. Re-authenticating with zerodha")
             access_token = self.authorize_and_get_access_token()
             self.kite.set_access_token(access_token)
             self.token_db.put_access_token(access_token)
         else:
+            logging.info("Access token obtained from database")
             token = at['token'][0]
             # Now check if the token is valid
             try:
-                self.kite.set_access_token(token)
+                logging.info("Validating access token obtained from database")
                 self.kite.instruments("NSE")
+                self.kite.set_access_token(token)
             except:
-                print('wrong access token')
+                logging.info('Access token obtained from database has gone stale. Re-authenticating')
                 # If the token is invalid, then authorize again
                 access_token = self.authorize_and_get_access_token()
                 self.kite.set_access_token(access_token)
