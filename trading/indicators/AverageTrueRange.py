@@ -1,16 +1,19 @@
 from trading.indicators.Indicator import Indicator
 from trading.indicators.TrueRange import TrueRange
-from trading.lines.Line import Line
 
 
 class AverageTrueRange(Indicator):
-    def __init__(self, period, candle_interval, candle_length):
-        super().__init__(period, candle_interval, candle_length)
-        self.true_range = TrueRange(period, candle_interval, candle_length)
+    def __init__(self, **kwargs):
+        super().__init__(self.__class__.__name__, {self.__class__.__name__: "real(15,5)"}, **kwargs)
 
-    def calculate_lines(self, df_in):
-        df = df_in.copy()
-        true_range_line = self.true_range.calculate_lines(df_in)[0]
-        df[self.true_range.__class__.__name__] = true_range_line.get_series()
-        df[self.__class__.__name__] = df[self.true_range.__class__.__name__].rolling(self.candle_length).mean()
-        return [Line(self.__class__.__name__, df[self.__class__.__name__])]
+        self.true_range = TrueRange(**kwargs)
+
+    def calculate_lines(self, candle_time):
+        true_range_df = self.true_range.get_lines(candle_time)
+        true_range_df[self.indicator_name] = \
+            true_range_df[self.true_range.__class__.__name__].rolling(self.candle_length).mean()
+
+        true_range_df.dropna(inplace=True)
+
+        for i, v in true_range_df[self.indicator_name].items():
+            self.indicator_db.put_indicator_value(i, [v])

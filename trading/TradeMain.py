@@ -5,19 +5,21 @@ from kiteconnect import KiteTicker
 from trading.db.AccessTokenDB import AccessTokenDB
 from trading.db.InstrumentsDB import InstrumentsDB
 from trading.db.SymbolsDB import SymbolsDB
-from trading.strategies.SuperTrendStrategy import SuperTrendStrategy
-from trading.worker.WorkerThread import WorkerThread
+from trading.strategies.TestStrategy import TestStrategy
+from trading.workers.IndicatorRefreshThread import IndicatorRefreshThread
 from trading.zerodha.auth.Authorizer import Authorizer
 from trading.zerodha.kite.Orders import Orders
+from trading.zerodha.kite.Period import Period
 from trading.zerodha.kite.Ticks import Ticks
 
 
 def listen_to_market(kite, on_ticks, on_connect):
+    logging.info("Connecting to market")
     kite_ticker = KiteTicker(kite.api_key, kite.access_token)
 
     kite_ticker.on_ticks = on_ticks
     kite_ticker.on_connect = on_connect
-    kite_ticker.connect()
+    kite_ticker.connect(threaded=True)
     logging.info("Started listening to market")
 
 
@@ -48,18 +50,29 @@ class TradeMain:
         on_connect = ticks.on_connect
         listen_to_market(kite, on_ticks, on_connect)
 
-        period = 'Min'  # Minutes
+        period = Period.MIN  # Minutes
         candle_interval = 1  # 1 Minute or 5 Minute candle
-        candle_length = 6  # How many number of candles required
+        candle_length = 3  # How many number of candles required
         multiplier = 3
 
-        print(kite.margins("equity")['net'])
+        logging.info("Available cash {}".format(kite.margins("equity")['net']))
         threads = []
 
         for symbol in symbols:
-            strategy = SuperTrendStrategy(period, candle_interval, candle_length, orders, multiplier=multiplier)
-            t = WorkerThread(kite, ticks_db_path, instruments_db, symbol, strategy, margin, order_pct)
-            threads.append(t)
+            strategy = TestStrategy(symbol=symbol,
+                                    period=period,
+                                    candle_length=candle_length,
+                                    candle_interval=candle_interval,
+                                    margin=margin,
+                                    order_pct=order_pct,
+                                    orders=orders,
+                                    db_path=ticks_db_path,
+                                    instruments_db=instruments_db,
+                                    multiplier=multiplier)
+
+            for ind in strategy.get_indicators():
+                t = IndicatorRefreshThread(kite, indicator=ind)
+                threads.append(t)
 
         # Start all threads
         for t in threads:
@@ -68,4 +81,3 @@ class TradeMain:
         # Wait for all of them to finish
         for t in threads:
             t.join()
-

@@ -11,7 +11,7 @@ def retry(tries=4, delay=3, backoff=2, logger=None):
     :param tries: number of times to try (not retry) before giving up
     :type tries: int
     :param delay: initial delay between retries in seconds
-    :type delay: int
+    :type delay: float
     :param backoff: backoff multiplier e.g. value of 2 will double the delay
         each retry
     :type backoff: int
