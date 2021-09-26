@@ -10,6 +10,8 @@ class AverageTrueRange(Indicator):
 
     def calculate_lines(self, candle_time):
         true_range_df = self.true_range.get_lines(candle_time)
+        self.validate_candles(true_range_df, candle_time)
+        
         true_range_df[self.indicator_name] = \
             true_range_df[self.true_range.__class__.__name__].rolling(self.candle_length).mean()
 

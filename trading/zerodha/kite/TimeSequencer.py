@@ -4,12 +4,14 @@ from trading.zerodha.kite.Period import Period
 
 
 def get_time_sequence(period, candle_interval, candle_length, start_time):
+    '''
     if start_time.hour > 15:
         raise ValueError(
             "Outside of market hours. Given hour {} and minute {}".format(start_time.hour, start_time.minute))
     elif start_time.hour == 15 and start_time.minute > 30:
         raise ValueError(
             "Outside of market hours. Given hour {} and minute {}".format(start_time.hour, start_time.minute))
+    '''
 
     trading_holidays = [
         datetime.date(2021, 10, 15),
@@ -55,3 +57,20 @@ def get_time_delta(period, candle_interval):
 
 def get_previous_time(period, candle_interval, start_time):
     return get_time_sequence(period, candle_interval, 1, start_time)[0]
+
+
+def get_missing_time(actual_time_list, expected_time_list):
+    expected_time_list = [str(i) for i in expected_time_list]
+    actual_time_list = [str(i) for i in actual_time_list]
+    return list(set(expected_time_list) - set(actual_time_list))
+
+
+'''
+print(get_time_sequence(Period.MIN, 1, 7, datetime.datetime(year=2021,
+                                                            month=9,
+                                                            day=28,
+                                                            hour=14,
+                                                            minute=55,
+                                                            second=59,
+                                                            microsecond=0)))
+'''

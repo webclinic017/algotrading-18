@@ -41,6 +41,7 @@ class IndicatorDB:
         data = pd.read_sql_query(query, self.db)
 
         if data.empty:
+            self.db.close()
             return data
 
         data = data.set_index(['ts'])

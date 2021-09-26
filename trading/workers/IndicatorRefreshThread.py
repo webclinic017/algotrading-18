@@ -12,12 +12,11 @@ class IndicatorRefreshThread(WorkerThread):
 
     def do_run(self, candle_time):
         logging.info(
-            "Starting to gather {} values for symbol {}".format(self.indicator.__class__.__name__, self.indicator.symbol))
+            "Fetching {} values for symbol {}".format(self.indicator.__class__.__name__, self.indicator.symbol))
         try:
             self.indicator.calculate_lines(candle_time)
         except DataNotAvailableError as e:
-            logging.info("{} {} data for length {} not available for {} at {}"
-                         .format(self.indicator.candle_interval, self.indicator.period.name, self.indicator.candle_length, self.indicator.symbol, candle_time))
+            pass
 
 
 

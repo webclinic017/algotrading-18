@@ -5,7 +5,7 @@ from trading.db.IndicatorDB import IndicatorDB
 from trading.db.TicksDB import TicksDB
 from trading.errors.DataNotAvailableError import DataNotAvailableError
 from trading.zerodha.kite.Period import Period
-from trading.zerodha.kite.TimeSequencer import get_previous_time, get_time_sequence
+from trading.zerodha.kite.TimeSequencer import get_previous_time, get_time_sequence, get_missing_time
 
 
 class Indicator(ABC):
@@ -36,6 +36,9 @@ class Indicator(ABC):
         return self.indicator_db.get_indicator_value(candle_time)
 
     def resample_data(self, df):
+        if df.empty:
+            return df
+
         ticks = df.loc[:, ['price']]
         resampled_df = ticks['price'].resample(self.resample_time).ohlc()
         # resampled_df.dropna(inplace=True)
@@ -53,27 +56,31 @@ class Indicator(ABC):
         candle_sequence = self.get_candle_sequence(candle_end_time)
         candle_start_time = candle_sequence[-1]
 
-        print(candle_sequence)
-
         ticks = self.get_ticks(candle_start_time, candle_end_time)
-
-        if ticks.empty:
-            err_str = "No ticks available for indicator {}".format(self.indicator_name)
-            logging.info(err_str)
-            raise DataNotAvailableError(err_str)
-
         df = self.resample_data(ticks)
-        print(df)
 
-        if len(df) != len(candle_sequence):
-            err_str = "Expecting {} number of {} {} candles, but found {} candles for indicator {}"\
-                .format(self.candle_length, self.candle_interval, self.period.name, str(len(df)), self.indicator_name)
-            logging.info(err_str)
-            raise DataNotAvailableError(err_str)
+        self.validate_candles(df, candle_end_time)
 
         return df
 
     def get_candle_sequence(self, candle_end_time):
         return get_time_sequence(self.period, self.candle_interval, self.candle_length, candle_end_time)
+
+    def validate_candles(self, actual_candles, candle_time):
+        expected_candles = self.get_candle_sequence(candle_time)
+        actual_candles = actual_candles.index.values.tolist()
+
+        if len(actual_candles) != len(expected_candles):
+            err_str = "Expecting {} number of {} {} candles, but only found {} candles" \
+                      "for indicator {} for symbol {}"\
+                .format(self.candle_length,
+                        self.candle_interval,
+                        self.period.name,
+                        str(len(actual_candles)),
+                        self.indicator_name,
+                        self.symbol)
+            logging.info(err_str)
+            logging.info("Missing candles: {}".format(get_missing_time(actual_candles, expected_candles)))
+            raise DataNotAvailableError(err_str)
 
 
