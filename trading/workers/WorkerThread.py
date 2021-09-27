@@ -12,10 +12,17 @@ class WorkerThread(threading.Thread, ABC):
         self.kite = kite
 
     def run(self):
+        # We want to start at the strike of every minute
+        # init_time = datetime.datetime.now()
+        init_time = datetime.datetime(2021, 9, 27, 13, 26, 46)
+        logging.info("Sleeping {} seconds to synchronize with minutes".format(60 - init_time.second))
+        time.sleep(60 - init_time.second)
+        candle_time = datetime.datetime(2021, 9, 27, 13, 27, 4)
+
         start_time = time.time()
 
         while True:
-            candle_time = datetime.datetime.now().replace(microsecond=0)
+            # candle_time = datetime.datetime.now().replace(microsecond=0)
             current_hour = candle_time.hour
             current_minute = candle_time.minute
 
@@ -28,6 +35,7 @@ class WorkerThread(threading.Thread, ABC):
                 break
 
             self.sleep(start_time)
+            candle_time = candle_time + datetime.timedelta(minutes=1)
 
     @abstractmethod
     def do_run(self, candle_time):

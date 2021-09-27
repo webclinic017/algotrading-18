@@ -48,7 +48,7 @@ class TradeMain:
         ticks = Ticks(symbols, ticks_db_path, instruments_db)
         on_ticks = ticks.on_ticks
         on_connect = ticks.on_connect
-        listen_to_market(kite, on_ticks, on_connect)
+        # listen_to_market(kite, on_ticks, on_connect)
 
         period = Period.MIN  # Minutes
         candle_interval = 1  # 1 Minute or 5 Minute candle

@@ -34,8 +34,26 @@ class IndicatorDB:
         self.db.close()
 
     @retry(tries=5, delay=0.02, backoff=2)
-    def get_indicator_value(self, start_time, end_time):
-        query = "SELECT * FROM {} where ts >= '{}' and ts < '{}'".format(self.name, start_time, end_time)
+    def get_indicator_values(self, start_time, end_time):
+        query = "SELECT * FROM {} where ts >= '{}' and ts < '{}' ORDER BY ts ASC".format(self.name, start_time, end_time)
+        print(query)
+
+        self.db = sqlite3.connect(self.db_path)
+        data = pd.read_sql_query(query, self.db)
+
+        if data.empty:
+            self.db.close()
+            return data
+
+        data = data.set_index(['ts'])
+        data.index = pd.to_datetime(data.index)
+
+        self.db.close()
+        return data
+
+    @retry(tries=5, delay=0.02, backoff=2)
+    def get_indicator_value(self, candle_time):
+        query = "SELECT * FROM {} where ts = '{}' ORDER BY ts DESC".format(self.name, candle_time)
 
         self.db = sqlite3.connect(self.db_path)
         data = pd.read_sql_query(query, self.db)
