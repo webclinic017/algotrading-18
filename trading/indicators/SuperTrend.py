@@ -9,90 +9,157 @@ class SuperTrend(Indicator):
         self.average_true_range = AverageTrueRange(**kwargs)
         self.multiplier = kwargs['multiplier']
         self.color_column_name = self.__class__.__name__ + "_Color"
+        self.atr_name = self.average_true_range.__class__.__name__
 
         columns = {
+            "open": "real(15,5)",
+            "high": "real(15,5)",
+            "low": "real(15,5)",
+            "close": "real(15,5)",
+            "AverageTrueRange": "real(15,5)",
+            "BU": "real(15,5)",
+            "BL": "real(15,5)",
+            "UB": "real(15,5)",
+            "LB": "real(15,5)",
             self.__class__.__name__: "real(15,5)",
-            self.color_column_name: "text"
+            self.color_column_name: "varchar"
         }
         super().__init__(self.__class__.__name__, columns, **kwargs)
 
     def calculate_lines(self, candle_time):
-        self.calculate_super_trend(candle_time)
+        print(str(candle_time))
+        st_df = self.indicator_db.get_indicator_value(self.get_n_candle_sequence(2, candle_time)[-1])
+        if st_df.empty:
+            self.calculate_super_trend(candle_time)
+            return
+
+        self.calculate_super_trend_from_previous_super_trend(st_df, candle_time)
 
     def calculate_super_trend(self, candle_time):
         ticks_df = self.get_data_from_ticks(candle_time)
         atr_df = self.average_true_range.get_lines(2, candle_time)
 
         # By now, we should have both the ticks and average true range values for the given candle length
-        df = pd.concat([ticks_df, atr_df])
-
-        atr_name = self.average_true_range.__class__.__name__
-        st_name = self.indicator_name
+        df = pd.concat([ticks_df, atr_df], axis=1)
+        df.dropna(inplace=True)
+        df = df.sort_index(ascending=True)
 
         # Basic upper and lower bands
-        df['B-U'] = ((df['high'] + df['low']) / 2) + (df[atr_name] * self.multiplier)
-        df['B-L'] = ((df['high'] + df['low']) / 2) - (df[atr_name] * self.multiplier)
+        df['BU'] = ((df['high'] + df['low']) / 2) + (df[self.atr_name] * self.multiplier)
+        df['BL'] = ((df['high'] + df['low']) / 2) - (df[self.atr_name] * self.multiplier)
 
         # Initialise final upper and lower bands
-        df['U-B'] = df['B-U']
-        df['L-B'] = df['B-L']
+        df['UB'] = df['BU']
+        df['LB'] = df['BL']
 
-        # Iterate the dataframe
-        ind = df.index
-        for i in range(len(df)):
-            if df['close'][i - 1] > df['U-B'][i - 1] or df['B-U'][i] < df['U-B'][i - 1]:
-                df.loc[ind[i], 'U-B'] = df['B-U'][i]
-            else:
-                df.loc[ind[i], 'U-B'] = min(df['B-U'][i], df['U-B'][i - 1])
+        df = self.calculate_bands(df)
 
-        for i in range(self.candle_length + 1, len(df)):
-            if df['close'][i - 1] < df['L-B'][i - 1] or df['B-L'][i] > df['L-B'][i - 1]:
-                df.loc[ind[i], 'L-B'] = df['B-L'][i]
-            else:
-                df.loc[ind[i], 'L-B'] = max(df['B-L'][i], df['L-B'][i - 1])
+        print(df)
 
-        df[st_name] = 0
+        df[self.indicator_name] = 0.0
         df[self.color_column_name] = "na"
 
         # We have to iterate and find the first super trend
         # We cannot simply assume the first super trend to be upper or lower band value. This will give wrong signals
         # Once we find the first super trend, which is the correct one, then we can extend it easily
-        for s in range(len(df)):
-            if (df['close'][s - 1] <= df['U-B'][s - 1]) and (df['close'][s] > df['U-B'][s]):
-                df.loc[ind[s], st_name] = df['L-B'][s]
-                df.loc[ind[s], self.color_column_name] = "green"
+        ind = df.index
+        for i in range(1, len(df)):
+            if (df['close'][i - 1] <= df['UB'][i - 1]) and (df['close'][i] > df['UB'][i]):
+                df.loc[ind[i], self.indicator_name] = df['LB'][i]
+                df.loc[ind[i], self.color_column_name] = "green"
                 break
-            if (df['close'][s - 1] >= df['L-B'][s - 1]) and (df['close'][s] < df['L-B'][s]):
-                df.loc[ind[s], st_name] = df['U-B'][s]
-                df.loc[ind[s], self.color_column_name] = "red"
+            if (df['close'][i - 1] >= df['LB'][i - 1]) and (df['close'][i] < df['LB'][i]):
+                df.loc[ind[i], self.indicator_name] = df['UB'][i]
+                df.loc[ind[i], self.color_column_name] = "red"
                 break
-
-        if s + 1 >= len(df):
-            # We did not find a cross over
-            pass
-        else:
-            for i in range(s + 1, len(df)):
-                if (df[st_name][i - 1] == df['U-B'][i - 1]) and (df['close'][i] > df['U-B'][i]):
-                    df.loc[ind[i], st_name] = df['L-B'][i]
-                    df.loc[ind[i], self.color_column_name] = "green"
-                elif (df[st_name][i - 1] == df['U-B'][i - 1]) and (df['close'][i] <= df['U-B'][i]):
-                    df.loc[ind[i], st_name] = df['U-B'][i]
-                    df.loc[ind[i], self.color_column_name] = df[self.color_column_name][i - 1]
-                elif (df[st_name][i - 1] == df['L-B'][i - 1]) and (df['close'][i] < df['L-B'][i]):
-                    df.loc[ind[i], st_name] = df['U-B'][i]
-                    df.loc[ind[i], self.color_column_name] = "red"
-                elif (df[st_name][i - 1] == df['L-B'][i - 1]) and (df['close'][i] >= df['L-B'][i]):
-                    df.loc[ind[i], st_name] = df['L-B'][i]
-                    df.loc[ind[i], self.color_column_name] = df[self.color_column_name][i - 1]
-                else:
-                    df.loc[ind[i], st_name] = df[st_name][i - 1]
-                    df.loc[ind[i], self.color_column_name] = df[self.color_column_name][i - 1]
 
         self.store_super_trend_values(df)
 
+    def calculate_bands(self, df_in):
+        df = df_in.copy()
+        ind = df.index
+        for i in range(1, len(df)):
+            if df['close'][i - 1] > df['UB'][i - 1]:
+                df.loc[ind[i], 'UB'] = df['BU'][i]
+            else:
+                df.loc[ind[i], 'UB'] = min(df['BU'][i], df['UB'][i - 1])
+
+        for i in range(1, len(df)):
+            if df['close'][i - 1] < df['LB'][i - 1]:
+                df.loc[ind[i], 'LB'] = df['BL'][i]
+            else:
+                df.loc[ind[i], 'LB'] = max(df['BL'][i], df['LB'][i - 1])
+
+        return df
+
+    def calculate_super_trend_from_previous_super_trend(self, st_df, candle_time):
+        print(st_df)
+        ticks_df = self.get_data_from_ticks(candle_time)
+        ticks_df = ticks_df.tail(1)
+
+        curr_time = str(self.get_previous_indicator_time(candle_time))
+        prev_time = str(self.get_n_candle_sequence(2, candle_time)[-1])
+        prev_st_time = str(st_df.index[0])
+
+        if prev_time != prev_st_time:
+            raise ValueError("Previous ST for expected time not found. Actual time {}, Expected time {}".format(prev_st_time, prev_time))
+
+        atr_df = self.average_true_range.get_lines(1, candle_time)
+        if curr_time != str(atr_df.index[0]) or curr_time != str(ticks_df.index[0]):
+            raise ValueError("ATR for expected time not found. Actual time {}, Expected time {}".format(atr_df.index[0], curr_time))
+
+        _df = pd.concat([ticks_df, atr_df], axis=1)
+
+        # Basic upper and lower bands
+        _df['BU'] = ((_df['high'] + _df['low']) / 2) + (_df[self.atr_name] * self.multiplier)
+        _df['BL'] = ((_df['high'] + _df['low']) / 2) - (_df[self.atr_name] * self.multiplier)
+
+        # Initialise defaults
+        _df['UB'] = _df['BU']
+        _df['LB'] = _df['BL']
+        _df[self.indicator_name] = 0.0
+        _df[self.color_column_name] = "na"
+
+        df = st_df.append(_df)
+        df.dropna(inplace=True)
+        df = df.sort_index(ascending=True)
+        df = self.calculate_bands(df)
+
+        ind = df.index
+        for i in range(1, len(df)):
+            if (df['close'][i - 1] <= df['UB'][i - 1]) and (df['close'][i] > df['UB'][i]):
+                df.loc[ind[i], self.indicator_name] = df['LB'][i]
+                df.loc[ind[i], self.color_column_name] = "green"
+            elif (df['close'][i - 1] <= df['UB'][i - 1]) and (df['close'][i] <= df['UB'][i]) and (df[self.color_column_name][i - 1] == "red"):
+                df.loc[ind[i], self.indicator_name] = df['UB'][i]
+                df.loc[ind[i], self.color_column_name] = "red"
+            elif (df['close'][i - 1] >= df['LB'][i - 1]) and (df['close'][i] < df['LB'][i]):
+                df.loc[ind[i], self.indicator_name] = df['UB'][i]
+                df.loc[ind[i], self.color_column_name] = "red"
+            elif (df['close'][i - 1] >= df['LB'][i - 1]) and (df['close'][i] >= df['LB'][i]) and (df[self.color_column_name][i - 1] == "green"):
+                df.loc[ind[i], self.indicator_name] = df['LB'][i]
+                df.loc[ind[i], self.color_column_name] = "green"
+            else:
+                df.loc[ind[i], self.indicator_name] = df[self.indicator_name][i - 1]
+                df.loc[ind[i], self.color_column_name] = df[self.color_column_name][i - 1]
+
+        self.store_super_trend_values(df)
+
+
     def store_super_trend_values(self, df):
-        for i in range(len(df)):
-            self.indicator_db.put_indicator_value(df.index[i], [df[self.indicator_name][i], df[self.color_column_name][i]])
+        for i in range(1, len(df)):
+            self.indicator_db.put_indicator_value(df.index[i],
+                                                  [df['open'][i],
+                                                   df['high'][i],
+                                                   df['low'][i],
+                                                   df['close'][i],
+                                                   df['AverageTrueRange'][i],
+                                                   df['BU'][i],
+                                                   df['BL'][i],
+                                                   df['UB'][i],
+                                                   df['LB'][i],
+                                                   df[self.indicator_name][i],
+                                                   df[self.color_column_name][i]])
 
 
 
