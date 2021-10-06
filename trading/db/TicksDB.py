@@ -1,4 +1,5 @@
 import datetime
+import logging
 import sqlite3
 import traceback
 
@@ -10,10 +11,8 @@ from trading.zerodha.kite.Retry import retry
 class TicksDB:
     def __init__(self, db_path, instruments_db):
         self.db = sqlite3.connect(db_path)
-        self.suffix = datetime.datetime.now().date()
         self.instruments_db = instruments_db
 
-    @retry(tries=5, delay=0.02, backoff=2)
     def insert_ticks(self, ticks):
         c = self.db.cursor()
         for tick in ticks:
@@ -23,7 +22,7 @@ class TicksDB:
                 query = "INSERT INTO {} (ts,price,volume) VALUES (?,?,?)".format(tok)
                 c.execute(query, vals)
             except:
-                # print("Exception while inserting ticks: " + traceback.format_exc())
+                logging.error("Exception while inserting ticks: " + traceback.format_exc())
                 pass
         try:
             self.db.commit()

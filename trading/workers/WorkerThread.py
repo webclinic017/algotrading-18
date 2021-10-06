@@ -12,7 +12,7 @@ class WorkerThread(threading.Thread, ABC):
         self.kite = kite
 
     def run(self):
-        candle_time = datetime.datetime(2021, 9, 28, 12, 34, 0)
+        candle_time = datetime.datetime(2021, 9, 28, 12, 30, 0)
 
         start_time = time.time()
 
@@ -29,7 +29,7 @@ class WorkerThread(threading.Thread, ABC):
                              "Exiting thread".format(current_hour, current_minute))
                 break
 
-            self.sleep(start_time)
+            # self.sleep(start_time)
             candle_time = candle_time + datetime.timedelta(minutes=1)
 
     @abstractmethod

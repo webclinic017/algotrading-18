@@ -1,20 +1,17 @@
 import logging
 import sys
-import time
 from datetime import datetime
-import pandas as pd
 
+import pandas as pd
 from kiteconnect import KiteTicker
 
 from trading.db.AccessTokenDB import AccessTokenDB
 from trading.db.InstrumentsDB import InstrumentsDB
 from trading.db.SymbolsDB import SymbolsDB
 from trading.db.TicksDB import TicksDB
-from trading.strategies.TestStrategy import TestStrategy
-from trading.workers.IndicatorRefreshThread import IndicatorRefreshThread
+from trading.strategies.SuperTrend33Strategy import SuperTrend33Strategy
+from trading.workers.StrategyRunner import StrategyRunner
 from trading.zerodha.auth.Authorizer import Authorizer
-from trading.zerodha.kite.Orders import Orders
-from trading.zerodha.kite.Period import Period
 from trading.zerodha.kite.Ticks import Ticks
 
 
@@ -36,15 +33,12 @@ class TradeMain:
     def trade(self):
         ticks_db_path = "trading/store/ticks.db"
         exchange = "NSE"
-        margin = 0.20
-        order_pct = 0.50
         symbols = ["APOLLOHOSP"]
 
         # All zerodha related objects initialise here
         authorizer = Authorizer(AccessTokenDB(ticks_db_path))
         kite = authorizer.get_authorized_kite_object()
         logging.info("Authorized with kite connect successfully")
-        orders = Orders(kite, exchange)
 
         # All DBs initialise here
         instruments_db = InstrumentsDB(kite, exchange)
@@ -53,17 +47,12 @@ class TradeMain:
         # We want to start at the strike of every minute
         init_time = datetime.now()
         logging.info("Sleeping {} seconds to synchronize with minutes".format(60 - init_time.second))
-        time.sleep(60 - init_time.second)
+        # time.sleep(60 - init_time.second)
 
         ticks = Ticks(symbols, ticks_db_path, instruments_db)
         on_ticks = ticks.on_ticks
         on_connect = ticks.on_connect
         # listen_to_market(kite, on_ticks, on_connect)
-
-        period = Period.MIN  # Minutes
-        candle_interval = 1  # 1 Minute or 5 Minute candle
-        candle_length = 3  # How many number of candles required
-        multiplier = 3
 
         logging.info("Available cash {}".format(kite.margins("equity")['net']))
         threads = []
@@ -71,20 +60,13 @@ class TradeMain:
         # self.get_ohlc_for_time(instruments_db, ticks_db_path)
 
         for symbol in symbols:
-            strategy = TestStrategy(symbol=symbol,
-                                    period=period,
-                                    candle_length=candle_length,
-                                    candle_interval=candle_interval,
-                                    margin=margin,
-                                    order_pct=order_pct,
-                                    orders=orders,
-                                    db_path=ticks_db_path,
-                                    instruments_db=instruments_db,
-                                    multiplier=multiplier)
+            strategy = SuperTrend33Strategy(kite,
+                                            exchange=exchange,
+                                            symbol=symbol,
+                                            db_path=ticks_db_path,
+                                            instruments_db=instruments_db)
 
-            for ind in strategy.get_indicators():
-                t = IndicatorRefreshThread(kite, indicator=ind)
-                threads.append(t)
+            threads.append(StrategyRunner(kite, strategy=strategy))
 
         # Start all threads
         for t in threads:

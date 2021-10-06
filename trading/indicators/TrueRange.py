@@ -2,9 +2,8 @@ from trading.indicators.Indicator import Indicator
 
 
 class TrueRange(Indicator):
-    def __init__(self, **kwargs):
-        columns = {self.__class__.__name__: "real(15,5)"}
-        super().__init__(self.__class__.__name__, columns, **kwargs)
+    def __init__(self, strategy, **kwargs):
+        super().__init__(self.__class__.__name__, strategy, **kwargs)
 
         # For true range, previous and current candles are enough
         self.candle_length = 2
@@ -18,6 +17,7 @@ class TrueRange(Indicator):
         df[self.indicator_name] = df[['H-L', 'H-PC', 'L-PC']].max(axis=1, skipna=False)
 
         df.dropna(inplace=True)
-
-        for i, v in df[self.indicator_name].items():
-            self.indicator_db.put_indicator_value(i, [v])
+        df.drop('H-L', axis=1, inplace=True)
+        df.drop('H-PC', axis=1, inplace=True)
+        df.drop('L-PC', axis=1, inplace=True)
+        self.store_indicator_value(df.tail(1), candle_time)
